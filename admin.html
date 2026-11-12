@@ -1,19 +1,202 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>교수자 성적관리</title><style>body{margin:0;background:#f2f5fa;color:#1d2939;font-family:system-ui,'Malgun Gothic',sans-serif}main{max-width:1150px;margin:35px auto;padding:18px}section{background:#fff;border-radius:15px;padding:24px;margin-bottom:18px;box-shadow:0 6px 25px #17253a0b}h1{margin:0 0 12px}input,select,button{padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}button{background:#165bc5;color:white;border:0;cursor:pointer}button:disabled{opacity:.5}input[type=number]{width:72px}input[name=name]{width:105px}input[name=employee_id]{width:105px}.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.hidden{display:none}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:750px}td,th{border-bottom:1px solid #e2e8f0;padding:8px;text-align:left}th{background:#f8fafc}#status{white-space:pre-wrap;color:#9b3030}small{color:#64748b}.muted{color:#667085}</style></head><body><main><section><h1>교수자 성적관리</h1><p class="muted">관리자 로그인 후 40명의 성적을 수정하고 시험별 공개 단계를 설정합니다.</p><div id="login" class="bar"><input id="email" type="email" placeholder="관리자 이메일" autocomplete="username"><input id="password" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="signIn">로그인</button></div><div id="signed" class="bar hidden"><span id="who"></span><button id="signOut">로그아웃</button></div><p id="status" role="status"></p></section><div id="panel" class="hidden"><section><h2>성적 공개 단계</h2><div class="bar"><select id="stage"><option value="0">0 · 전체 비공개</option><option value="1">1 · 1회차 본시험</option><option value="2">2 · 1회차 재시험까지</option><option value="3">3 · 2회차 본시험까지</option><option value="4">4 · 2회차 재시험까지</option></select><button id="publish">공개 단계 저장</button><span id="currentStage"></span></div><p><small>단계 저장 즉시 수험생 화면에 적용됩니다. 미입력 점수는 미입력으로 표시됩니다.</small></p></section><section><h2>성적 관리</h2><div class="bar"><button id="add">행 추가</button><button id="save">변경 내용 저장</button><button id="download">CSV 양식 다운로드</button><label>CSV 일괄 가져오기 <input type="file" id="file" accept=".csv,text/csv"></label></div><p><small>CSV 열 순서: employee_id,name,s1,r1,s2,r2. 빈 점수는 미입력으로 처리됩니다. 동일 사번은 덮어씁니다. 파일 선택 후 변경 내용 저장을 누르세요. 엑셀에서 CSV UTF-8로 저장할 수 있습니다.</small></p><div class="tablewrap"><table><thead><tr><th>사번</th><th>성명</th><th>1회 본시</th><th>1회 재시</th><th>2회 본시</th><th>2회 재시</th><th>삭제</th></tr></thead><tbody id="rows"></tbody></table></div></section></div></main><script type="module">
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>교수자 성적관리</title>
+<style>
+body{margin:0;background:#f2f5fa;color:#1d2939;font-family:system-ui,'Malgun Gothic',sans-serif}
+main{max-width:1150px;margin:35px auto;padding:18px}
+section{background:#fff;border-radius:15px;padding:24px;margin-bottom:18px;box-shadow:0 6px 25px #17253a0b}
+h1{margin:0 0 12px}input,select,button{padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+button{background:#165bc5;color:white;border:0;cursor:pointer}button:disabled{opacity:.5}
+input[type=number]{width:72px}input[name=name],input[name=employee_id]{width:105px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.hidden{display:none}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:750px}
+td,th{border-bottom:1px solid #e2e8f0;padding:8px;text-align:left}th{background:#f8fafc}
+#status{white-space:pre-wrap;color:#9b3030}small{color:#64748b}.muted{color:#667085}
+</style>
+</head>
+<body><main>
+<section>
+<h1>교수자 성적관리</h1>
+<p class="muted">관리자 로그인 후 성적을 수정하고 시험별 공개 단계를 설정합니다.</p>
+<div id="login" class="bar"><input id="email" type="email" placeholder="관리자 이메일" autocomplete="username"><input id="password" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="signIn">로그인</button></div>
+<div id="signed" class="bar hidden"><span id="who"></span><button id="signOut">로그아웃</button></div>
+<p id="status" role="status"></p>
+</section>
+<div id="panel" class="hidden">
+<section><h2>성적 공개 단계</h2><div class="bar"><select id="stage"><option value="0">0 · 전체 비공개</option><option value="1">1 · 1회차 본시험</option><option value="2">2 · 1회차 재시험까지</option><option value="3">3 · 2회차 본시험까지</option><option value="4">4 · 2회차 재시험까지</option></select><button id="publish">공개 단계 저장</button><span id="currentStage"></span></div><p><small>단계 저장 즉시 수험생 화면에 적용됩니다. 미입력 점수는 미입력으로 표시됩니다.</small></p></section>
+<section><h2>성적 관리</h2><div class="bar"><button id="add">행 추가</button><button id="save">변경 내용 저장</button><button id="download">CSV 양식 다운로드</button><label>CSV 일괄 가져오기 <input type="file" id="file" accept=".csv,text/csv"></label></div>
+<p><small>CSV 열 순서: employee_id,name,s1,r1,s2,r2. 빈 점수는 미입력으로 처리됩니다. 동일 사번은 덮어씁니다. 파일 선택 후 변경 내용 저장을 누르세요. 엑셀에서 CSV UTF-8로 저장할 수 있습니다. [제외]는 저장 버튼을 누르기 전까지 삭제 예약입니다.</small></p>
+<div class="tablewrap"><table><thead><tr><th>사번</th><th>성명</th><th>1회 본시</th><th>1회 재시</th><th>2회 본시</th><th>2회 재시</th><th>삭제</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+</div></main>
+<script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-const base='https://njclnpclernrvflbpxsp.supabase.co',key='sb_publishable_XrjNj7nRzBaSCqp6TM3KdQ_B--Ak1P9';
-const sb=createClient(base,key,{auth:{persistSession:true,autoRefreshToken:true}}),$=id=>document.getElementById(id);let records=[];
+const base='https://njclnpclernrvflbpxsp.supabase.co';
+const key='sb_publishable_XrjNj7nRzBaSCqp6TM3KdQ_B--Ak1P9';
+const sb=createClient(base,key,{auth:{persistSession:true,autoRefreshToken:true}});
+const $=id=>document.getElementById(id);
+let records=[];
+let deletedIds=new Set();
+let persistedIds=new Set();
 const status=s=>$('status').textContent=s;
-async function api(action,extra={}){const {data:{session}}=await sb.auth.getSession();if(!session)throw Error('로그인이 필요합니다.');const r=await fetch(base+'/functions/v1/score-api',{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:'Bearer '+session.access_token},body:JSON.stringify({action,...extra})});const data=await r.json();if(!r.ok)throw Error(data.error||`HTTP ${r.status}`);return data}
-function cell(name,value,type='text'){const td=document.createElement('td'),inp=document.createElement('input');inp.name=name;inp.type=type;inp.value=value??'';if(type==='number'){inp.min=0;inp.max=100;inp.step='any'}if(name==='employee_id'){inp.maxLength=8;inp.inputMode='numeric'}td.append(inp);return td}
-function render(){const tbody=$('rows');tbody.replaceChildren();records.forEach((rec,i)=>{const tr=document.createElement('tr');for(const k of ['employee_id','name','s1','r1','s2','r2'])tr.append(cell(k,rec[k],['s1','r1','s2','r2'].includes(k)?'number':'text'));const td=document.createElement('td'),b=document.createElement('button');b.textContent='제외';b.onclick=()=>{records.splice(i,1);render();status('화면에서만 제외했습니다. 서버의 기존 데이터는 삭제되지 않습니다.')};td.append(b);tr.append(td);tbody.append(tr)})}
-function collect(){return [...$('rows').children].map(tr=>{const obj={};tr.querySelectorAll('input').forEach(input=>{obj[input.name]=input.value.trim()});if(!/^\d{8}$/.test(obj.employee_id))throw Error('사번은 8자리 숫자여야 합니다.');if(!obj.name)throw Error('성명이 비어 있습니다.');for(const k of ['s1','r1','s2','r2']){const v=obj[k];if(v==='')obj[k]=null;else{const n=Number(v);if(!Number.isFinite(n)||n<0||n>100)throw Error('점수는 0~100이어야 합니다.');obj[k]=n}}return obj})}
-async function refresh(){const out=await api('admin_list');records=out.students||[];render();$('stage').value=String(out.published_stage??0);$('currentStage').textContent=`현재 ${out.published_stage??0}단계 공개`;status(`${records.length}명 불러왔습니다.`)}
-async function logged(){const {data:{session}}=await sb.auth.getSession();$('login').classList.toggle('hidden',!!session);$('signed').classList.toggle('hidden',!session);$('panel').classList.add('hidden');if(session){$('who').textContent=session.user.email||'관리자';try{await refresh();$('panel').classList.remove('hidden')}catch(e){status(e.message+' 관리자 권한과 API 업데이트를 확인해주세요.')}}}
-$('signIn').onclick=async()=>{status('로그인 중...');const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){status(error.message);return}await logged()};$('signOut').onclick=async()=>{await sb.auth.signOut();status('로그아웃했습니다.');await logged()};
-$('add').onclick=()=>{records.push({employee_id:'',name:'',s1:null,r1:null,s2:null,r2:null});render()};
-$('save').onclick=async()=>{try{const students=collect();if(students.length>40&&!confirm('40명을 초과합니다. 계속할까요?'))return;const ids=students.map(x=>x.employee_id);if(new Set(ids).size!==ids.length)throw Error('중복 사번이 있습니다.');if(!confirm(`${students.length}명의 성적을 서버에 저장하시겠습니까?`))return;const out=await api('admin_upsert',{students});status(`${out.count}명 저장 완료`);await refresh()}catch(e){status(e.message)}};
-$('publish').onclick=async()=>{try{const n=Number($('stage').value);if(!confirm(`성적 공개 단계를 ${n}단계로 변경하시겠습니까?`))return;await api('admin_publish',{published_stage:n});status('공개 단계 저장 완료');await refresh()}catch(e){status(e.message)}};
-function csvParse(text){const out=[];let row=[],v='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){v+='"';i++}else if(c==='"')quoted=false;else v+=c}else if(c==='"')quoted=true;else if(c===','){row.push(v);v=''}else if(c==='\n'){row.push(v.replace(/\r$/,''));out.push(row);row=[];v=''}else v+=c}if(v||row.length){row.push(v.replace(/\r$/,''));out.push(row)}return out}
-$('file').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;const rows=csvParse((await file.text()).replace(/^\uFEFF/,''));const headers=rows.shift().map(x=>x.trim());for(const col of ['employee_id','name','s1','r1','s2','r2'])if(!headers.includes(col))throw Error('CSV 필수 열 누락: '+col);const imported=rows.filter(r=>r.some(x=>x.trim())).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]||'').trim()])));const map=new Map(records.map(x=>[x.employee_id,x]));for(const x of imported)map.set(x.employee_id,x);records=[...map.values()];render();status(`${imported.length}명 CSV 반영(아직 서버 저장 전). 저장 버튼을 누르세요.`)}catch(e){status(e.message)}};
-$('download').onclick=()=>{const header='employee_id,name,s1,r1,s2,r2\r\n';const blob=new Blob(['\uFEFF'+header],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='성적입력양식.csv';a.click();URL.revokeObjectURL(a.href)};logged();
-</script></body></html>
+async function api(action,extra={}){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)throw Error('로그인이 필요합니다.');
+  const r=await fetch(base+'/functions/v1/score-api',{
+    method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:'Bearer '+session.access_token},
+    body:JSON.stringify({action,...extra})
+  });
+  const data=await r.json();
+  if(!r.ok)throw Error(data.error||`HTTP ${r.status}`);
+  return data;
+}
+function cell(name,value,type='text'){
+  const td=document.createElement('td'),inp=document.createElement('input');
+  inp.name=name;inp.type=type;inp.value=value??'';
+  if(type==='number'){inp.min=0;inp.max=100;inp.step='any'}
+  if(name==='employee_id'){inp.maxLength=8;inp.inputMode='numeric'}
+  td.append(inp);return td;
+}
+function readRows(){
+  return [...$('rows').children].map(tr=>{
+    const obj={};tr.querySelectorAll('input').forEach(input=>obj[input.name]=input.value.trim());
+    return obj;
+  });
+}
+function render(){
+  const tbody=$('rows');tbody.replaceChildren();
+  records.forEach((rec,i)=>{
+    const tr=document.createElement('tr');
+    for(const k of ['employee_id','name','s1','r1','s2','r2'])
+      tr.append(cell(k,rec[k],['s1','r1','s2','r2'].includes(k)?'number':'text'));
+    const td=document.createElement('td'),b=document.createElement('button');
+    b.textContent='제외';
+    b.onclick=()=>{
+      records=readRows();
+      const removed=records[i];
+      if(persistedIds.has(removed.employee_id))deletedIds.add(removed.employee_id);
+      records.splice(i,1);
+      render();
+      status(`삭제 예정 ${deletedIds.size}명. [변경 내용 저장]을 누르면 실제 삭제됩니다.`);
+    };
+    td.append(b);tr.append(td);tbody.append(tr);
+  });
+}
+function collect(){
+  return readRows().map(obj=>{
+    if(!/^\d{8}$/.test(obj.employee_id))throw Error('사번은 8자리 숫자여야 합니다.');
+    if(!obj.name)throw Error('성명이 비어 있습니다.');
+    for(const k of ['s1','r1','s2','r2']){
+      const v=obj[k];
+      if(v==='')obj[k]=null;
+      else{const n=Number(v);if(!Number.isFinite(n)||n<0||n>100)throw Error('점수는 0~100이어야 합니다.');obj[k]=n}
+    }
+    return obj;
+  });
+}
+async function refresh(){
+  const out=await api('admin_list');
+  records=out.students||[];
+  persistedIds=new Set(records.map(x=>x.employee_id));
+  deletedIds.clear();render();
+  $('stage').value=String(out.published_stage??0);
+  $('currentStage').textContent=`현재 ${out.published_stage??0}단계 공개`;
+  status(`${records.length}명 불러왔습니다.`);
+}
+async function logged(){
+  const {data:{session}}=await sb.auth.getSession();
+  $('login').classList.toggle('hidden',!!session);
+  $('signed').classList.toggle('hidden',!session);
+  $('panel').classList.add('hidden');
+  if(session){
+    $('who').textContent=session.user.email||'관리자';
+    try{await refresh();$('panel').classList.remove('hidden')}
+    catch(e){status(e.message+' 관리자 권한과 API 업데이트를 확인해주세요.')}
+  }else{records=[];persistedIds.clear();deletedIds.clear()}
+}
+$('signIn').onclick=async()=>{
+  status('로그인 중...');
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error){status(error.message);return}
+  await logged();
+};
+$('signOut').onclick=async()=>{await sb.auth.signOut();status('로그아웃했습니다.');await logged()};
+$('add').onclick=()=>{
+  records=readRows();
+  records.push({employee_id:'',name:'',s1:null,r1:null,s2:null,r2:null});
+  render();
+};
+$('save').onclick=async()=>{
+  const btn=$('save');
+  try{
+    const students=collect();
+    if(students.length>40&&!confirm('40명을 초과합니다. 계속할까요?'))return;
+    const ids=students.map(x=>x.employee_id);
+    if(new Set(ids).size!==ids.length)throw Error('중복 사번이 있습니다.');
+    const toDelete=[...deletedIds].filter(id=>!ids.includes(id));
+    if(!confirm(`성적 ${students.length}명 저장\n수험자 ${toDelete.length}명 삭제\n\n진행하시겠습니까?`))return;
+    btn.disabled=true;
+    const out=await api('admin_upsert',{students});
+    if(toDelete.length){
+      try{await api('admin_delete',{employee_ids:toDelete})}
+      catch(e){throw Error(`성적 ${out.count}명은 저장되었지만 삭제에 실패했습니다: ${e.message}`)}
+    }
+    try{
+      await refresh();
+      status(`${out.count}명 저장, ${toDelete.length}명 삭제 완료`);
+    }catch(e){
+      status(`저장/삭제 요청은 완료됐으나 목록 새로고침에 실패했습니다: ${e.message}`);
+    }
+  }catch(e){status(e.message)}
+  finally{btn.disabled=false}
+};
+$('publish').onclick=async()=>{
+  try{
+    const n=Number($('stage').value);
+    if(!confirm(`성적 공개 단계를 ${n}단계로 변경하시겠습니까?`))return;
+    await api('admin_publish',{published_stage:n});
+    await refresh();status('공개 단계 저장 완료');
+  }catch(e){status(e.message)}
+};
+function csvParse(text){
+  const out=[];let row=[],v='',quoted=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(quoted){if(c==='"'&&text[i+1]==='"'){v+='"';i++}else if(c==='"')quoted=false;else v+=c}
+    else if(c==='"')quoted=true;
+    else if(c===','){row.push(v);v=''}
+    else if(c==='\n'){row.push(v.replace(/\r$/,''));out.push(row);row=[];v=''}
+    else v+=c;
+  }
+  if(v||row.length){row.push(v.replace(/\r$/,''));out.push(row)}
+  return out;
+}
+$('file').onchange=async e=>{
+  try{
+    const file=e.target.files[0];if(!file)return;
+    const rows=csvParse((await file.text()).replace(/^\uFEFF/,''));
+    if(!rows.length)throw Error('CSV 파일이 비어 있습니다.');
+    const headers=rows.shift().map(x=>x.trim());
+    for(const col of ['employee_id','name','s1','r1','s2','r2'])
+      if(!headers.includes(col))throw Error('CSV 필수 열 누락: '+col);
+    const imported=rows.filter(r=>r.some(x=>x.trim())).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]||'').trim()])));
+    records=readRows();
+    const map=new Map(records.filter(x=>x.employee_id).map(x=>[x.employee_id,x]));
+    for(const x of imported){map.set(x.employee_id,x);deletedIds.delete(x.employee_id)}
+    records=[...map.values(),...records.filter(x=>!x.employee_id)];
+    render();
+    status(`${imported.length}명 CSV 반영(아직 서버 저장 전). 저장 버튼을 누르세요.`);
+  }catch(e){status(e.message)}
+  finally{$('file').value=''}
+};
+$('download').onclick=()=>{
+  const blob=new Blob(['\uFEFFemployee_id,name,s1,r1,s2,r2\r\n'],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='성적입력양식.csv';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+logged();
+</script>
+</body>
+</html>
