@@ -26,11 +26,11 @@ td,th{border-bottom:1px solid #e2e8f0;padding:8px;text-align:left}th{background:
 <p id="status" role="status"></p>
 </section>
 <div id="panel" class="hidden">
-<section><h2>성적 공개 단계</h2><div class="bar"><select id="stage"><option value="0">0 · 전체 비공개</option><option value="1">1 · 1회차 본시험</option><option value="2">2 · 1회차 재시험까지</option><option value="3">3 · 2회차 본시험까지</option><option value="4">4 · 2회차 재시험까지</option></select><button id="publish">공개 단계 저장</button><span id="currentStage"></span></div><p><small>단계 저장 즉시 수험생 화면에 적용됩니다. 미입력 점수는 미입력으로 표시됩니다.</small></p></section>
+<section><h2>성적 공개 단계</h2><div class="bar"><select id="stage"><option value="0">0 · 전체 비공개</option><option value="1">1 · 1회차 본시험</option><option value="2">2 · 1회차 재시험까지</option><option value="3">3 · 2회차 본시험까지</option><option value="4">4 · 2회차 재시험까지</option><option value="5">5 · 도면평가까지</option></select><button id="publish">공개 단계 저장</button><span id="currentStage"></span></div><p><small>단계 저장 즉시 수험생 화면에 적용됩니다. 미입력 점수는 미입력으로 표시됩니다.</small></p></section>
 <section><h2>성적 관리</h2><div class="bar"><button id="add">행 추가</button><button id="save">변경 내용 저장</button><button id="download">CSV 양식 다운로드</button><label>CSV 일괄 가져오기 <input type="file" id="file" accept=".csv,text/csv"></label></div>
-<p><small>CSV 열 순서: employee_id,name,s1,r1,s2,r2. 빈 점수는 미입력으로 처리됩니다. 동일 사번은 덮어씁니다. 파일 선택 후 변경 내용 저장을 누르세요. 엑셀에서 CSV UTF-8로 저장할 수 있습니다. [제외]는 저장 버튼을 누르기 전까지 삭제 예약입니다.</small></p>
+<p><small>CSV 열 순서: employee_id,name,s1,r1,s2,r2,drawing_score. 기존 6열 CSV도 가져올 수 있습니다. 빈 점수는 미입력으로 처리됩니다. 동일 사번은 덮어씁니다. 파일 선택 후 변경 내용 저장을 누르세요. 엑셀에서 CSV UTF-8로 저장할 수 있습니다. [제외]는 저장 버튼을 누르기 전까지 삭제 예약입니다.</small></p>
 <div class="bar" style="margin:14px 0"><label for="sortMode">명단 정렬</label><select id="sortMode"><option value="name-asc">이름 가나다순 (기본)</option><option value="name-desc">이름 역순</option><option value="id-asc">사번 오름차순</option><option value="id-desc">사번 내림차순</option></select><small>정렬은 관리자 화면에만 적용됩니다.</small></div>
-<div class="tablewrap"><table><thead><tr><th>사번</th><th>성명</th><th>1회 본시</th><th>1회 재시</th><th>2회 본시</th><th>2회 재시</th><th>삭제</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<div class="tablewrap"><table><thead><tr><th>사번</th><th>성명</th><th>1회 본시</th><th>1회 재시</th><th>2회 본시</th><th>2회 재시</th><th>도면평가</th><th>삭제</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 </div></main>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
@@ -85,8 +85,8 @@ function render(){
   const tbody=$('rows');tbody.replaceChildren();
   records.forEach((rec,i)=>{
     const tr=document.createElement('tr');
-    for(const k of ['employee_id','name','s1','r1','s2','r2'])
-      tr.append(cell(k,rec[k],['s1','r1','s2','r2'].includes(k)?'number':'text'));
+    for(const k of ['employee_id','name','s1','r1','s2','r2','drawing_score'])
+      tr.append(cell(k,rec[k],['s1','r1','s2','r2','drawing_score'].includes(k)?'number':'text'));
     const td=document.createElement('td'),b=document.createElement('button');
     b.textContent='제외';
     b.onclick=()=>{
@@ -104,7 +104,7 @@ function collect(){
   return readRows().map(obj=>{
     if(!/^\d{8}$/.test(obj.employee_id))throw Error('사번은 8자리 숫자여야 합니다.');
     if(!obj.name)throw Error('성명이 비어 있습니다.');
-    for(const k of ['s1','r1','s2','r2']){
+    for(const k of ['s1','r1','s2','r2','drawing_score']){
       const v=obj[k];
       if(v==='')obj[k]=null;
       else{const n=Number(v);if(!Number.isFinite(n)||n<0||n>100)throw Error('점수는 0~100이어야 합니다.');obj[k]=n}
@@ -147,7 +147,7 @@ $('sortMode').onchange=()=>{
 };
 $('add').onclick=()=>{
   records=readRows();
-  records.push({employee_id:'',name:'',s1:null,r1:null,s2:null,r2:null});
+  records.push({employee_id:'',name:'',s1:null,r1:null,s2:null,r2:null,drawing_score:null});
   render();
 };
 $('save').onclick=async()=>{
@@ -206,7 +206,11 @@ $('file').onchange=async e=>{
     const imported=rows.filter(r=>r.some(x=>x.trim())).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]||'').trim()])));
     records=readRows();
     const map=new Map(records.filter(x=>x.employee_id).map(x=>[x.employee_id,x]));
-    for(const x of imported){map.set(x.employee_id,x);deletedIds.delete(x.employee_id)}
+    for(const x of imported){
+      const previous=map.get(x.employee_id)||{drawing_score:''};
+      map.set(x.employee_id,{...previous,...x});
+      deletedIds.delete(x.employee_id);
+    }
     records=[...map.values(),...records.filter(x=>!x.employee_id)];
     render();
     status(`${imported.length}명 CSV 반영(아직 서버 저장 전). 저장 버튼을 누르세요.`);
@@ -214,7 +218,7 @@ $('file').onchange=async e=>{
   finally{$('file').value=''}
 };
 $('download').onclick=()=>{
-  const blob=new Blob(['\uFEFFemployee_id,name,s1,r1,s2,r2\r\n'],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
+  const blob=new Blob(['\uFEFFemployee_id,name,s1,r1,s2,r2,drawing_score\r\n'],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='성적입력양식.csv';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
