@@ -29,6 +29,7 @@ td,th{border-bottom:1px solid #e2e8f0;padding:8px;text-align:left}th{background:
 <section><h2>성적 공개 단계</h2><div class="bar"><select id="stage"><option value="0">0 · 전체 비공개</option><option value="1">1 · 1회차 본시험</option><option value="2">2 · 1회차 재시험까지</option><option value="3">3 · 2회차 본시험까지</option><option value="4">4 · 2회차 재시험까지</option></select><button id="publish">공개 단계 저장</button><span id="currentStage"></span></div><p><small>단계 저장 즉시 수험생 화면에 적용됩니다. 미입력 점수는 미입력으로 표시됩니다.</small></p></section>
 <section><h2>성적 관리</h2><div class="bar"><button id="add">행 추가</button><button id="save">변경 내용 저장</button><button id="download">CSV 양식 다운로드</button><label>CSV 일괄 가져오기 <input type="file" id="file" accept=".csv,text/csv"></label></div>
 <p><small>CSV 열 순서: employee_id,name,s1,r1,s2,r2. 빈 점수는 미입력으로 처리됩니다. 동일 사번은 덮어씁니다. 파일 선택 후 변경 내용 저장을 누르세요. 엑셀에서 CSV UTF-8로 저장할 수 있습니다. [제외]는 저장 버튼을 누르기 전까지 삭제 예약입니다.</small></p>
+<div class="bar" style="margin:14px 0"><label for="sortMode">명단 정렬</label><select id="sortMode"><option value="name-asc">이름 가나다순 (기본)</option><option value="name-desc">이름 역순</option><option value="id-asc">사번 오름차순</option><option value="id-desc">사번 내림차순</option></select><small>정렬은 관리자 화면에만 적용됩니다.</small></div>
 <div class="tablewrap"><table><thead><tr><th>사번</th><th>성명</th><th>1회 본시</th><th>1회 재시</th><th>2회 본시</th><th>2회 재시</th><th>삭제</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 </div></main>
 <script type="module">
@@ -40,6 +41,7 @@ const $=id=>document.getElementById(id);
 let records=[];
 let deletedIds=new Set();
 let persistedIds=new Set();
+let sortMode="name-asc";
 const status=s=>$('status').textContent=s;
 async function api(action,extra={}){
   const {data:{session}}=await sb.auth.getSession();
@@ -65,7 +67,21 @@ function readRows(){
     return obj;
   });
 }
+function sortRecords(){
+  const collator=new Intl.Collator('ko',{sensitivity:'base',numeric:true});
+  const key=sortMode.startsWith('name')?'name':'employee_id';
+  const direction=sortMode.endsWith('desc')?-1:1;
+  // 새로 추가한 빈 행은 정렬과 관계없이 맨 아래에 표시합니다.
+  records.sort((a,b)=>{
+    const av=String(a[key]??'').trim(),bv=String(b[key]??'').trim();
+    if(!av&&!bv)return 0;
+    if(!av)return 1;
+    if(!bv)return -1;
+    return direction*collator.compare(av,bv);
+  });
+}
 function render(){
+  sortRecords();
   const tbody=$('rows');tbody.replaceChildren();
   records.forEach((rec,i)=>{
     const tr=document.createElement('tr');
@@ -123,6 +139,12 @@ $('signIn').onclick=async()=>{
   await logged();
 };
 $('signOut').onclick=async()=>{await sb.auth.signOut();status('로그아웃했습니다.');await logged()};
+$('sortMode').onchange=()=>{
+  records=readRows();
+  sortMode=$('sortMode').value;
+  render();
+  status('정렬 기준을 변경했습니다. 성적 데이터는 변경되지 않습니다.');
+};
 $('add').onclick=()=>{
   records=readRows();
   records.push({employee_id:'',name:'',s1:null,r1:null,s2:null,r2:null});
